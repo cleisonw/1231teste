@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Aura do Brasil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+        .step-dot { width: 32px; height: 4px; border-radius: 2px; background: #e5e7eb; transition: all 0.3s; }
+        .step-dot.active { background: #32BCAD; }
+        .step-dot.completed { background: #32BCAD; }
+        .input-field { width: 100%; padding: 14px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; transition: all 0.2s; outline: none; }
+        .input-field:focus { border-color: #32BCAD; }
+        .input-field.error { border-color: #ef4444; }
+        .input-field.success { border-color: #22c55e; }
+        .btn-primary { width: 100%; padding: 16px; background: #32BCAD; color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { background: #2ba99c; }
+        .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+        .btn-secondary { width: 100%; padding: 16px; background: #f3f4f6; color: #374151; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #32BCAD; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .qr-container { background: white; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .copy-btn { transition: all 0.2s; }
+        .copy-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-[#F7FAFC] min-h-screen py-8 px-4">
+    <div class="max-w-md mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Checkout Seguro</h1>
+            <p class="text-gray-500 text-sm mt-1">Aura do Brasil</p>
+        </div>
+        
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step-dot active" id="step1-dot"></div>
+            <div class="step-dot" id="step2-dot"></div>
+            <div class="step-dot" id="step3-dot"></div>
+            <div class="step-dot" id="step4-dot"></div>
+        </div>
+        
+        <!-- Step 1: Customer Info -->
+        <div id="step1" class="bg-white rounded-2xl shadow-lg p-6 fade-in">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">📋 Seus Dados</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo *</label>
+                    <input type="text" id="customerName" class="input-field" placeholder="Seu nome completo" autocomplete="name">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">E-mail *</label>
+                    <input type="email" id="customerEmail" class="input-field" placeholder="seu@email.com" autocomplete="email">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">CPF *</label>
+                    <input type="text" id="customerCPF" class="input-field" placeholder="000.000.000-00" maxlength="14" autocomplete="off">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Telefone (WhatsApp) *</label>
+                    <input type="tel" id="customerPhone" class="input-field" placeholder="(00) 00000-0000" maxlength="15" autocomplete="tel">
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <button onclick="validateAndNext()" class="btn-primary">Continuar para Pagamento</button>
+            </div>
+        </div>
+        
+        <!-- Step 2: Order Summary -->
+        <div id="step2" class="bg-white rounded-2xl shadow-lg p-6 fade-in" style="display: none;">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">📦 Resumo do Pedido</h2>
+            
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-600">Produto</span>
+                    <span class="font-medium text-gray-800">Kit Premium de Skincare</span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-gray-200">
+                    <span class="text-gray-800 font-semibold">Total a pagar</span>
+                    <span class="text-xl font-bold text-[#32BCAD]">R$ 147.00</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button onclick="goToStep(1)" class="btn-secondary">Voltar</button>
+                <button onclick="generatePix()" class="btn-primary" id="generateBtn">Gerar PIX</button>
+            </div>
+        </div>
+        
+        <!-- Step 3: PIX Payment -->
+        <div id="step3" class="bg-white rounded-2xl shadow-lg p-6 fade-in" style="display: none;">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">💚 Pagamento via PIX</h2>
+            
+            <div id="loadingState" class="text-center py-8" style="display: none;">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">Gerando seu PIX...</p>
+            </div>
+            
+            <div id="pixState" style="display: none;">
+                <div class="text-center mb-6">
+                    <div class="qr-container mb-4">
+                        <img id="qrCode" src="" alt="QR Code PIX" class="w-48 h-48">
+                    </div>
+                    <p class="text-sm text-gray-500 mb-2">Escaneie com o app do seu banco</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">PIX Copia e Cola</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="pixCode" class="input-field bg-gray-50" readonly>
+                        <button onclick="copyPixCode()" class="copy-btn px-4 py-3 bg-gray-100 rounded-xl font-medium text-gray-700" id="copyBtn">Copiar</button>
+                    </div>
+                </div>
+                
+                <div id="statusMessage" class="p-4 rounded-xl text-center mb-4" style="display: none;">
+                    <p id="statusText" class="font-medium"></p>
+                </div>
+                
+                <div class="text-center">
+                    <button onclick="checkPayment()" class="btn-secondary" id="checkBtn">🔄 Verificar Pagamento</button>
+                    <p class="text-xs text-gray-500 mt-3">O pagamento será detectado automaticamente em alguns segundos</p>
+                </div>
+            </div>
+            
+            <div id="errorState" class="text-center py-6" style="display: none;">
+                <p class="text-red-500 mb-4" id="errorMessage"></p>
+                <button onclick="goToStep(2)" class="btn-secondary">Tentar Novamente</button>
+            </div>
+        </div>
+        
+        <!-- Step 4: Success -->
+        <div id="step4" class="bg-white rounded-2xl shadow-lg p-6 fade-in text-center" style="display: none;">
+            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">✅ Pedido Confirmado!</h2>
+            <p class="text-gray-600 mb-4">Seu pagamento foi processado com sucesso.</p>
+            <p class="text-sm text-gray-500">Você receberá a confirmação por e-mail em breve.</p>
+            <button onclick="window.location.reload()" class="btn-primary mt-6">Voltar à Loja</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuration from URL params
+        const params = new URLSearchParams(window.location.search);
+        const productName = params.get('product') || 'Produto';
+        const price = params.get('price') || '0';
+        const selectedColor = params.get('color') || '';
+        const selectedSize = params.get('size') || '';
+        const publicKey = params.get('pk') || '';
+        const isSandbox = params.get('sandbox') === 'true';
+        
+        const API_URL = isSandbox ? 'https://api.sandbox.lovepaybrasil.com/v1' : 'https://api.lovepaybrasil.com/v1';
+        let transactionId = null;
+        let pollingInterval = null;
+        
+        // CPF validation
+        function validateCPF(cpf) {
+            cpf = cpf.replace(/[^0-9]/g, '');
+            if (cpf.length !== 11) return false;
+            if (/^(\d)\1{10}$/.test(cpf)) return false;
+            let sum = 0, weight = 10;
+            for (let i = 0; i < 9; i++, weight--) sum += parseInt(cpf[i]) * weight;
+            let digit1 = (sum * 10 % 11) % 10;
+            if (parseInt(cpf[9]) !== digit1) return false;
+            sum = 0; weight = 11;
+            for (let i = 0; i < 10; i++, weight--) sum += parseInt(cpf[i]) * weight;
+            digit1 = (sum * 10 % 11) % 10;
+            return parseInt(cpf[10]) === digit1;
+        }
+        
+        // Input masks
+        document.getElementById('customerCPF').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (value.length > 9) value = value.slice(0, 9) + '-' + value.slice(9);
+            else if (value.length > 6) value = value.slice(0, 6) + '.' + value.slice(6);
+            else if (value.length > 3) value = value.slice(0, 3) + '.' + value.slice(3);
+            e.target.value = value;
+        });
+        
+        document.getElementById('customerPhone').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (value.length > 10) value = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7, 11);
+            else if (value.length > 6) value = '(' + value.slice(0, 2) + ') ' + value.slice(2, 6) + '-' + value.slice(6);
+            else if (value.length > 2) value = '(' + value.slice(0, 2) + ') ' + value.slice(2);
+            e.target.value = value;
+        });
+        
+        // Navigation
+        function goToStep(step) {
+            document.querySelectorAll('[id^="step"]').forEach(el => {
+                if (!el.id.includes('dot')) el.style.display = 'none';
+            });
+            document.getElementById('step' + step).style.display = 'block';
+            
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById('step' + i + '-dot');
+                if (i < step) {
+                    dot.className = 'step-dot completed';
+                } else if (i === step) {
+                    dot.className = 'step-dot active';
+                } else {
+                    dot.className = 'step-dot';
+                }
+            }
+        }
+        
+        // Validate Step 1
+        function validateAndNext() {
+            const name = document.getElementById('customerName').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            const cpf = document.getElementById('customerCPF').value.trim();
+            const phone = document.getElementById('customerPhone').value.trim();
+            
+            let isValid = true;
+            
+            if (!name) { document.getElementById('customerName').classList.add('error'); isValid = false; }
+            else { document.getElementById('customerName').classList.remove('error'); }
+            
+            if (!email || !email.includes('@')) { document.getElementById('customerEmail').classList.add('error'); isValid = false; }
+            else { document.getElementById('customerEmail').classList.remove('error'); }
+            
+            if (!validateCPF(cpf)) { document.getElementById('customerCPF').classList.add('error'); isValid = false; }
+            else { document.getElementById('customerCPF').classList.remove('error'); }
+            
+            if (!phone || phone.length < 14) { document.getElementById('customerPhone').classList.add('error'); isValid = false; }
+            else { document.getElementById('customerPhone').classList.remove('error'); }
+            
+            if (isValid) {
+                goToStep(2);
+            }
+        }
+        
+        // Generate PIX
+        async function generatePix() {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Gerando...';
+            
+            goToStep(3);
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('pixState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            
+            const customer = {
+                name: document.getElementById('customerName').value.trim(),
+                email: document.getElementById('customerEmail').value.trim(),
+                phone: document.getElementById('customerPhone').value.replace(/[^0-9]/g, ''),
+                document: document.getElementById('customerCPF').value.replace(/[^0-9]/g, '')
+            };
+            
+            try {
+                const response = await fetch(API_URL + '/charges', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + publicKey,
+                        'X-Idempotency-Key': crypto.randomUUID()
+                    },
+                    body: JSON.stringify({
+                        amount: Math.round(parseFloat(price) * 100),
+                        currency: 'BRL',
+                        customer: customer,
+                        payment_method: 'pix',
+                        description: 'Compra: ' + productName
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.qr_code || data.pix_code) {
+                    document.getElementById('loadingState').style.display = 'none';
+                    document.getElementById('pixState').style.display = 'block';
+                    
+                    if (data.qr_code) {
+                        document.getElementById('qrCode').src = data.qr_code;
+                    }
+                    document.getElementById('pixCode').value = data.pix_code || data.copy_paste_code || data.brcode || '';
+                    
+                    transactionId = data.id || data.transaction_id;
+                    
+                    // Start polling for payment status
+                    startPolling();
+                } else {
+                    throw new Error(data.error || 'Erro ao gerar PIX');
+                }
+            } catch (error) {
+                console.error('PIX Generation Error:', error);
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('errorState').style.display = 'block';
+                document.getElementById('errorMessage').textContent = error.message || 'Erro ao gerar pagamento. Tente novamente.';
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Gerar PIX';
+        }
+        
+        // Copy PIX code
+        function copyPixCode() {
+            const code = document.getElementById('pixCode').value;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = 'Copiado!';
+                btn.classList.add('bg-green-100', 'text-green-700');
+                setTimeout(() => {
+                    btn.textContent = 'Copiar';
+                    btn.classList.remove('bg-green-100', 'text-green-700');
+                }, 2000);
+            });
+        }
+        
+        // Check payment status
+        async function checkPayment() {
+            if (!transactionId) return;
+            
+            try {
+                const response = await fetch(API_URL + '/charges/' + transactionId, {
+                    headers: { 'Authorization': 'Bearer ' + publicKey }
+                });
+                const data = await response.json();
+                
+                if (data.status === 'approved' || data.status === 'paid') {
+                    stopPolling();
+                    showSuccess();
+                } else if (data.status === 'pending') {
+                    const statusMsg = document.getElementById('statusMessage');
+                    const statusText = document.getElementById('statusText');
+                    statusMsg.style.display = 'block';
+                    statusMsg.className = 'p-4 rounded-xl text-center mb-4 bg-yellow-50 text-yellow-700';
+                    statusText.textContent = 'Aguardando pagamento...';
+                }
+            } catch (error) {
+                console.error('Status Check Error:', error);
+            }
+        }
+        
+        // Start polling
+        function startPolling() {
+            checkPayment();
+            pollingInterval = setInterval(checkPayment, 5000);
+        }
+        
+        // Stop polling
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+        
+        // Show success
+        function showSuccess() {
+            stopPolling();
+            goToStep(4);
+        }
+    </script>
+</body>
+</html>
